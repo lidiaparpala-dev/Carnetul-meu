@@ -520,6 +520,15 @@ main{
 
   #toasts{left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:none}
 }
+/* ---------- Cont ---------- */
+.cont-bara{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.cont-linie{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cont-stare{color:var(--ink-soft)}
+.cont-eroare{color:var(--margin)}
+.form-cont{display:flex;flex-direction:column;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px}
+.form-cont input{padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:16px;background:#FFFDF6;color:var(--ink)}
+.form-butoane{display:flex;gap:6px}
+.form-butoane .btn-prim{flex:1}
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F4A3C">
@@ -538,6 +547,7 @@ main{
       <button id="nou" class="btn-prim">+ Pagină nouă</button>
       <button id="btnCal" class="btn-prim mobil-doar" type="button">Calendar</button>
     </header>
+    <div id="contBara" class="cont-bara"></div>
     <label class="cauta">
       <input id="cautare" type="search" placeholder="Caută în toate paginile…" autocomplete="off">
     </label>
@@ -671,6 +681,7 @@ main{
   }
   function save(){
     try { localStorage.setItem(LS_KEY, JSON.stringify(notes)); } catch(e){}
+    if (window.carnetCloud) window.carnetCloud.schedulePush();
   }
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function esc(s){
@@ -1271,6 +1282,22 @@ main{
   $('#inapoi').addEventListener('click', () => { currentId = null; setView('pagini'); fillPage(); renderList(); });
   $('#btnCal').addEventListener('click', () => setView('calendar'));
 
+  window.carnetApp = {
+    getNotes(){ return notes; },
+    replaceNotes(arr){
+      if (!Array.isArray(arr)) return;
+      notes = arr;
+      try { localStorage.setItem(LS_KEY, JSON.stringify(notes)); } catch(e){}
+      if (!notes.find(n => n.id === currentId)) currentId = notes.length ? notes[0].id : null;
+      if (document.activeElement && $('#editor').contains(document.activeElement)) {
+        // nu resetăm textul pe care îl scrie utilizatorul chiar acum
+        renderList(); renderTags(); renderCalendar(); renderUpcoming();
+      } else {
+        renderAll();
+      }
+    }
+  };
+
   /* ---------- Pornire ---------- */
   renderAll();
   checkReminders();
@@ -1281,6 +1308,162 @@ main{
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
+</script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDW_B_MhvaKTvvqBGJJn6b_eF6u7TsZ874",
+  authDomain: "write-to-me-2f5e3.firebaseapp.com",
+  projectId: "write-to-me-2f5e3",
+  storageBucket: "write-to-me-2f5e3.firebasestorage.app",
+  messagingSenderId: "1070042428219",
+  appId: "1:1070042428219:web:adab34a076c634733abd1e"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const bara = document.getElementById('contBara');
+
+let user = null;
+let unsubscribe = null;
+let pushTimer = null;
+let status = '';
+let errorMsg = '';
+let formOpen = false;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const notesRef = uid => doc(db, 'users', uid, 'data', 'notes');
+
+function mergeNotes(a, b){
+  const map = new Map();
+  [...a, ...b].forEach(n => {
+    const old = map.get(n.id);
+    if (!old || (n.updatedAt || '') > (old.updatedAt || '')) map.set(n.id, n);
+  });
+  return [...map.values()].sort((x, y) => x.id.localeCompare(y.id));
+}
+
+const msgFor = code => ({
+  'auth/invalid-email': 'Adresa de email nu este validă.',
+  'auth/missing-password': 'Introdu parola.',
+  'auth/weak-password': 'Parola trebuie să aibă cel puțin 6 caractere.',
+  'auth/email-already-in-use': 'Există deja un cont cu acest email.',
+  'auth/invalid-credential': 'Email sau parolă greșită.',
+  'auth/wrong-password': 'Email sau parolă greșită.',
+  'auth/user-not-found': 'Email sau parolă greșită.',
+  'auth/popup-closed-by-user': 'Fereastra Google a fost închisă.',
+  'auth/operation-not-allowed': 'Metoda de conectare nu este activată în Firebase.',
+  'auth/unauthorized-domain': 'Domeniul nu este autorizat în Firebase.',
+  'auth/network-request-failed': 'Fără conexiune la internet.'
+})[code] || 'Conectarea nu a reușit. Încearcă din nou.';
+
+function render(){
+  if (user){
+    bara.innerHTML = `
+      <div class="cont-linie"><span>Conectat: <b>${esc(user.email || 'cont Google')}</b></span><button id="btnIesi" class="link-btn">Ieși</button></div>
+      <small class="cont-stare">${esc(status)}</small>`;
+  } else {
+    bara.innerHTML = `
+      <div class="cont-linie"><span>Doar pe acest dispozitiv</span><button id="btnDeschideCont" class="link-btn">Conectează-te</button></div>
+      ${formOpen ? `
+      <div class="form-cont">
+        <input id="emailCont" type="email" placeholder="Email" autocomplete="email">
+        <input id="parolaCont" type="password" placeholder="Parolă" autocomplete="current-password">
+        <div class="form-butoane">
+          <button id="btnIntra" class="btn-prim">Intră</button>
+          <button id="btnCont" class="btn-prim">Cont nou</button>
+        </div>
+        <button id="btnGoogle" class="link-btn">Continuă cu Google</button>
+      </div>` : ''}
+      ${errorMsg ? `<small class="cont-eroare">${esc(errorMsg)}</small>` : ''}`;
+  }
+  bindButtons();
+}
+
+function bindButtons(){
+  const get = id => document.getElementById(id);
+  get('btnDeschideCont')?.addEventListener('click', () => { formOpen = !formOpen; errorMsg = ''; render(); });
+  get('btnIesi')?.addEventListener('click', () => signOut(auth));
+  get('btnGoogle')?.addEventListener('click', () => authAction(() => signInWithPopup(auth, new GoogleAuthProvider())));
+  get('btnIntra')?.addEventListener('click', () => {
+    const email = get('emailCont').value.trim(), pass = get('parolaCont').value;
+    authAction(() => signInWithEmailAndPassword(auth, email, pass));
+  });
+  get('btnCont')?.addEventListener('click', () => {
+    const email = get('emailCont').value.trim(), pass = get('parolaCont').value;
+    authAction(() => createUserWithEmailAndPassword(auth, email, pass));
+  });
+}
+
+async function authAction(fn){
+  errorMsg = '';
+  try { await fn(); formOpen = false; }
+  catch(e){ errorMsg = msgFor(e.code); render(); }
+}
+
+function setStatus(text){ status = text; render(); }
+
+async function pushNow(){
+  if (!user) return;
+  setStatus('Se sincronizează…');
+  try {
+    await setDoc(notesRef(user.uid), {
+      json: JSON.stringify(window.carnetApp.getNotes()),
+      updatedAt: new Date().toISOString()
+    });
+    setStatus('Sincronizat la ' + new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }));
+  } catch(e){
+    setStatus('Nu s-a putut sincroniza. Verifică internetul.');
+  }
+}
+
+function schedulePush(){
+  if (!user) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 800);
+}
+window.carnetCloud = { schedulePush };
+
+async function startSync(u){
+  user = u;
+  setStatus('Se încarcă notițele…');
+  const ref = notesRef(u.uid);
+  const snap = await getDoc(ref);
+  const remote = snap.exists() ? JSON.parse(snap.data().json || '[]') : [];
+  window.carnetApp.replaceNotes(mergeNotes(window.carnetApp.getNotes(), remote));
+  await pushNow();
+
+  unsubscribe = onSnapshot(ref, s => {
+    if (s.metadata.hasPendingWrites || !s.exists()) return;
+    const remoteNow = JSON.parse(s.data().json || '[]');
+    const mine = window.carnetApp.getNotes();
+    const merged = mergeNotes(mine, remoteNow);
+    const mineStr = JSON.stringify(mine);
+    const mergedStr = JSON.stringify(merged);
+    if (mergedStr !== mineStr) window.carnetApp.replaceNotes(merged);
+    if (mergedStr !== JSON.stringify(remoteNow)) schedulePush();
+  });
+}
+
+onAuthStateChanged(auth, async u => {
+  if (unsubscribe){ unsubscribe(); unsubscribe = null; }
+  if (u){
+    user = u;
+    try { await startSync(u); }
+    catch(e){ setStatus('Eroare la încărcarea notițelor din cont.'); }
+  } else {
+    user = null;
+    status = '';
+  }
+  render();
+});
+
+render();
 </script>
 </body>
 </html>
