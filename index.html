@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carnetul meu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cover:#2F4A3C;
+  --paper:#F8F3E6;
+  --rail:#EFE6CF;
+  --ink:#26304A;
+  --ink-soft:#6B6F7E;
+  --rule:#B9CDDF;
+  --margin:#C8553D;
+  --line:#D8CFB8;
+  --font-head:'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body:'Lora', Georgia, 'Times New Roman', serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%;margin:0}
+body{
+  background:var(--cover);
+  color:var(--ink);
+  font-family:var(--font-body);
+  padding:16px;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+
+.book{
+  position:relative;
+  max-width:1200px;
+  height:calc(100vh - 32px);
+  min-height:520px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:300px 1fr;
+  background:var(--paper);
+  border-radius:12px;
+  overflow:hidden;
+  padding-left:20px;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+/* spirală */
+.book::before{
+  content:'';
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:20px;
+  background:
+    radial-gradient(circle at 10px 20px, var(--paper) 0 4px, transparent 5px) 0 0 / 20px 40px repeat-y,
+    #1f3328;
+  z-index:5;
+}
+
+/* ---------- Coloana din stânga ---------- */
+.rail{
+  background:var(--rail);
+  border-right:1px solid var(--line);
+  padding:20px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-height:0;
+}
+.rail header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rail h1{
+  font-family:var(--font-head);
+  font-weight:600;
+  font-size:22px;
+  margin:0;
+}
+.btn-prim{
+  background:var(--cover);
+  color:var(--paper);
+  border:0;
+  border-radius:6px;
+  padding:7px 12px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.btn-prim:focus-visible,.tab:focus-visible,.link-btn:focus-visible,.chip:focus-visible,.cel:focus-visible,.lista li:focus-visible{
+  outline:2px solid var(--margin);
+  outline-offset:2px;
+}
+.cauta input{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:var(--paper);
+  outline:none;
+}
+.cauta input:focus{border-color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  border:1px solid var(--line);
+  background:var(--paper);
+  border-radius:999px;
+  padding:3px 10px;
+  font-size:14px;
+  cursor:pointer;
+}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.lista{
+  list-style:none;
+  margin:0;
+  padding:0;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-height:0;
+}
+.lista li{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-left:4px solid var(--margin);
+  border-radius:4px;
+  padding:8px 10px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.lista li.activ{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.lista li.gol{border-left-color:var(--line);cursor:default;color:var(--ink-soft);font-style:italic}
+.lista strong{font-family:var(--font-head);font-weight:600;font-size:16px;line-height:1.3}
+.lista .snip{font-size:14px;color:var(--ink-soft);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.lista .meta{font-size:12px;color:var(--ink-soft)}
+.lista .bell{position:absolute;margin-left:auto;color:var(--margin);font-size:10px;align-self:flex-end}
+.lista li{position:relative}
+
+/* ---------- Zona principală ---------- */
+main{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+}
+.tabs{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:14px 28px 0;
+  border-bottom:1px solid var(--line);
+}
+.tab{
+  background:none;
+  border:0;
+  border-bottom:2px solid transparent;
+  padding:8px 2px;
+  color:var(--ink-soft);
+  cursor:pointer;
+}
+.tab.on{color:var(--ink);border-bottom-color:var(--margin)}
+.tab.mic{margin-left:auto;font-size:14px}
+
+#pagina,#calendar{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  padding:20px 28px 40px;
+}
+
+.gol-mare{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--ink-soft);
+  font-style:italic;
+  text-align:center;
+}
+
+/* Foaia de carnet */
+.sheet{
+  position:relative;
+  background-color:#FFFDF6;
+  background-image:repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  background-attachment:local;
+  border:1px solid var(--line);
+  border-radius:3px 8px 8px 3px;
+  padding:14px 28px 28px 84px;
+  min-height:100%;
+  box-shadow:0 1px 0 rgba(0,0,0,.04), 0 8px 18px -12px rgba(38,48,74,.4);
+}
+.sheet::before{
+  content:'';
+  position:absolute;
+  left:64px; top:0; bottom:0;
+  width:1.5px;
+  background:var(--margin);
+  opacity:.5;
+}
+.antet{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  min-height:32px;
+}
+.stampa{
+  font-size:14px;
+  font-style:italic;
+  color:var(--ink-soft);
+  line-height:32px;
+}
+.link-btn{
+  background:none;
+  border:0;
+  color:var(--ink-soft);
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  padding:0;
+  font-size:14px;
+}
+.link-btn:hover{color:var(--margin)}
+.titlu{
+  display:block;
+  width:100%;
+  border:0;
+  background:transparent;
+  outline:none;
+  font-family:var(--font-head);
+  font-weight:600;
+  font-size:28px;
+  line-height:32px;
+  padding:0;
+  margin-top:0;
+}
+.etichete{
+  display:block;
+  width:100%;
+  border:0;
+  background:transparent;
+  outline:none;
+  font-size:16px;
+  line-height:32px;
+  color:var(--ink-soft);
+  padding:0;
+}
+.memento{
+  margin:6px 0 0;
+  padding:4px 0 6px;
+  font-size:15px;
+  line-height:32px;
+}
+.memento #rStatus{display:block;color:var(--ink-soft);font-style:italic}
+.rand{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.rand label{display:flex;align-items:center;gap:6px;font-size:15px}
+.rand input,.rand select{
+  border:0;
+  border-bottom:1px solid var(--ink-soft);
+  background:transparent;
+  padding:2px 4px;
+  outline:none;
+}
+.rand input[type=number]{width:64px}
+.corp{
+  display:block;
+  width:100%;
+  min-height:55vh;
+  border:0;
+  background:transparent;
+  outline:none;
+  resize:vertical;
+  font-size:18px;
+  line-height:32px;
+  padding:0;
+  margin-top:8px;
+}
+
+/* ---------- Calendar ---------- */
+.cal-antet{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cal-antet h2{
+  font-family:var(--font-head);
+  font-weight:600;
+  font-size:24px;
+  margin:0 auto 0 4px;
+}
+.cal-antet button{
+  border:1px solid var(--line);
+  background:var(--paper);
+  border-radius:6px;
+  padding:4px 12px;
+  cursor:pointer;
+}
+.zile-sap,.grila{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+}
+.zile-sap span{text-align:center;font-size:14px;color:var(--ink-soft);padding-bottom:4px}
+.cel{
+  min-height:56px;
+  background:#FFFDF6;
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:4px 6px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:flex-start;
+  text-align:left;
+}
+.cel.altaluna{opacity:.4}
+.cel.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.cel .nr{font-size:15px}
+.cel.azi .nr{background:var(--margin);color:#fff;border-radius:999px;padding:0 7px}
+.puncte i{
+  display:inline-block;
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--margin);
+  margin-right:3px;
+}
+.zi-lista,.viitoare{margin-top:22px}
+.zi-lista h3,.viitoare h3{
+  font-family:var(--font-head);
+  font-weight:600;
+  font-size:18px;
+  margin:0 0 8px;
+}
+.zi-lista ul,.viitoare ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.zi-lista li,.viitoare li{
+  background:#FFFDF6;
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:8px 12px;
+  cursor:pointer;
+  display:flex;
+  gap:12px;
+  align-items:baseline;
+  flex-wrap:wrap;
+}
+.zi-lista li b,.viitoare li b{font-weight:600;min-width:52px}
+.zi-lista li small,.viitoare li small{color:var(--ink-soft)}
+.gol-text{color:var(--ink-soft);font-style:italic;margin:0}
+
+/* ---------- Notificări ---------- */
+#toasts{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  z-index:50;
+  max-width:340px;
+}
+.toast{
+  background:var(--ink);
+  color:var(--paper);
+  padding:12px 14px;
+  border-radius:8px;
+  box-shadow:0 10px 24px rgba(0,0,0,.3);
+  font-size:15px;
+  line-height:1.4;
+  cursor:pointer;
+}
+.toast strong{font-family:var(--font-head);font-weight:600;display:block;margin-bottom:2px}
+
+/* ---------- Etichete pe text ---------- */
+.bara-etichete{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+.bara-etichete:empty{display:none}
+.eticheta-chip{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:14px;line-height:1.5;max-width:100%}
+.eticheta-chip b{font-weight:600}
+.eticheta-chip .fragment{color:var(--ink-soft);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.sterg-etich{border:0;background:none;cursor:pointer;color:var(--ink-soft);font-size:16px;line-height:1;padding:0 6px}
+.sterg-etich:hover{color:var(--margin)}
+.etichetare{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0}
+.etichetare .link-btn{font-size:14px}
+.eticheta-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.eticheta-form input{border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px;min-width:180px}
+.eticheta-form .btn-prim{padding:4px 10px}
+
+/* ---------- Navigare între pagini ---------- */
+.nav-pagina{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft)}
+.nav-btn{border:1px solid var(--line);background:var(--paper);border-radius:999px;width:28px;height:28px;line-height:1;cursor:pointer;font-size:18px;padding:0}
+.nav-btn:disabled{opacity:.35;cursor:default}
+.nav-btn:focus-visible{outline:2px solid var(--margin)}
+
+/* ---------- Întoarcerea paginii ---------- */
+.sheet{transform-origin:left center}
+.turn-next{animation:turnNext .56s ease-in-out}
+.turn-prev{animation:turnPrev .56s ease-in-out}
+@keyframes turnNext{
+  0%{transform:perspective(1600px) rotateY(0deg);opacity:1}
+  50%{transform:perspective(1600px) rotateY(-90deg);opacity:.35}
+  50.01%{transform:perspective(1600px) rotateY(90deg);opacity:.35}
+  100%{transform:perspective(1600px) rotateY(0deg);opacity:1}
+}
+@keyframes turnPrev{
+  0%{transform:perspective(1600px) rotateY(0deg);opacity:1}
+  50%{transform:perspective(1600px) rotateY(90deg);opacity:.35}
+  50.01%{transform:perspective(1600px) rotateY(-90deg);opacity:.35}
+  100%{transform:perspective(1600px) rotateY(0deg);opacity:1}
+}
+@media (prefers-reduced-motion: reduce){.turn-next,.turn-prev{animation:none}}
+
+/* ---------- Buton flotant lângă text ---------- */
+.flotant{position:absolute;z-index:6;background:var(--paper);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 20px -6px rgba(38,48,74,.35);padding:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:320px}
+.flotant[hidden]{display:none}
+.flotant .eticheta-form input{min-width:140px}
+
+/* ---------- Panou cu toate textele unei etichete ---------- */
+.panou{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+.panou[hidden]{display:none}
+.panou-fundal{position:absolute;inset:0;background:rgba(38,48,74,.35)}
+.panou-carte{position:relative;background:var(--paper);border-radius:10px;width:min(520px,100%);max-height:76vh;display:flex;flex-direction:column;padding:18px 20px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.panou-antet{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.panou-antet h2{font-family:var(--font-head);font-weight:600;font-size:20px;margin:0}
+.panou-sub{font-size:14px;color:var(--ink-soft);margin:2px 0 0}
+.panou-lista{list-style:none;margin:12px 0 0;padding:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.panou-lista li{background:#FFFDF6;border:1px solid var(--line);border-left:4px solid var(--margin);border-radius:4px;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.panou-lista li.gol{border-left-color:var(--line);cursor:default;color:var(--ink-soft);font-style:italic}
+.panou-lista .txt{font-style:italic;line-height:1.5}
+.panou-lista .sub{font-size:13px;color:var(--ink-soft)}
+.panou-lista .sterg-lab{align-self:flex-end;font-size:13px}
+.eticheta-nume{border:0;background:none;cursor:pointer;font:inherit;font-weight:600;padding:0;text-decoration:underline;text-decoration-color:var(--margin);text-underline-offset:3px}
+.nr-texte{color:var(--ink-soft);font-size:12px}
+
+/* ---------- Mobil ---------- */
+@media (max-width:760px){
+  body{padding:0}
+  .book{
+    grid-template-columns:1fr;
+    height:100vh;
+    min-height:0;
+    border-radius:0;
+    padding-left:14px;
+    grid-template-rows:auto 1fr;
+  }
+  .book::before{width:14px}
+  .rail{max-height:38vh;border-right:0;border-bottom:1px solid var(--line);padding:14px 12px}
+  .lista{max-height:none}
+  .sheet{padding-left:56px}
+  .sheet::before{left:44px}
+  #pagina,#calendar{padding:16px 14px 32px}
+  .tabs{padding:10px 14px 0}
+}
+/* ---------- Optimizare pentru mobil ---------- */
+.mobil-doar{display:none}
+@media (max-width:760px){
+  body{padding:0;background:var(--paper);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+  .book{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    height:100dvh;
+    max-width:none;
+    min-height:0;
+    border-radius:0;
+    box-shadow:none;
+    padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  }
+  .book::before{display:none}
+  .mobil-doar{display:inline-flex}
+
+  /* Pe mobil se vede fie lista, fie pagina/calendarul (nu ambele) */
+  .rail{flex:1 1 auto;min-height:0;max-height:none;border:0;padding:14px 14px 10px;gap:10px}
+  .rail h1{font-size:24px}
+  .cauta input{font-size:16px;padding:10px 12px}
+  .lista{flex:1 1 auto;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .lista li{padding:12px;min-height:56px}
+  .chip{font-size:15px;padding:6px 12px}
+  main{display:none;flex:1 1 auto}
+  .book:has(#editor:not([hidden])) .rail,
+  .book:has(#calendar:not([hidden])) .rail{display:none}
+  .book:has(#editor:not([hidden])) main,
+  .book:has(#calendar:not([hidden])) main{display:flex}
+
+  .tabs{padding:6px 10px 0;gap:14px;flex-wrap:nowrap;overflow-x:auto}
+  .tab{padding:12px 4px;min-height:44px;white-space:nowrap}
+  #pagina,#calendar{padding:14px 14px calc(40px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
+
+  /* Foaia: aproape pe toată lățimea, cu margine și text mai mari */
+  .sheet{padding:12px 16px 24px 46px;border-radius:0;border-left:0;border-right:0;box-shadow:none}
+  .sheet::before{left:34px}
+  .antet{min-height:0}
+  .stampa{font-size:13px;line-height:24px}
+  .titlu{font-size:24px;line-height:32px}
+  .etichete{font-size:16px}
+  .corp{font-size:17px;min-height:60vh}
+  .rand input,.rand select{font-size:16px}
+  .rand input[type=number]{width:70px}
+  .link-btn{padding:8px 4px;font-size:15px}
+  .nav-btn{width:38px;height:38px;font-size:20px}
+  .btn-prim{padding:10px 14px;min-height:40px}
+
+  /* Butonul de etichetare apare fix jos, deasupra tastaturii */
+  .flotant{
+    position:fixed !important;
+    top:auto !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+    left:10px !important;
+    right:10px;
+    max-width:none;
+    justify-content:center;
+    padding:8px;
+  }
+  .flotant .eticheta-form{width:100%}
+  .flotant .eticheta-form input{flex:1 1 140px;min-width:0;font-size:16px}
+
+  .panou{padding:0;align-items:flex-end}
+  .panou-carte{width:100%;max-height:85vh;max-height:85dvh;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+
+  .cal-antet button{min-width:40px;min-height:40px}
+  .cel{min-height:50px;padding:3px 4px}
+  .grila,.zile-sap{gap:3px}
+  .zi-lista li,.viitoare li{padding:10px 12px}
+
+  #toasts{left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:none}
+}
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F4A3C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Carnetul meu">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="book">
+  <aside class="rail">
+    <header>
+      <h1>Carnetul meu</h1>
+      <button id="nou" class="btn-prim">+ Pagină nouă</button>
+      <button id="btnCal" class="btn-prim mobil-doar" type="button">Calendar</button>
+    </header>
+    <label class="cauta">
+      <input id="cautare" type="search" placeholder="Caută în toate paginile…" autocomplete="off">
+    </label>
+    <div id="tags" class="tags" aria-label="Filtrează după etichetă"></div>
+    <ul id="lista" class="lista" aria-label="Pagini"></ul>
+  </aside>
+
+  <main>
+    <nav class="tabs" aria-label="Vizualizări">
+      <button id="inapoi" class="tab mobil-doar" type="button">‹ Pagini</button>
+      <button class="tab on" data-view="pagini">Pagini</button>
+      <button class="tab" data-view="calendar">Calendar</button>
+      <button id="btnNotif" class="tab mic" hidden>Activează notificările</button>
+    </nav>
+
+    <section id="pagina">
+      <div id="gol" class="gol-mare">
+        <p>Alege o pagină din listă sau începe una nouă.</p>
+      </div>
+
+      <article id="editor" class="sheet" hidden>
+        <div class="antet">
+          <span id="stampa" class="stampa"></span>
+          <span class="nav-pagina"><button id="prevP" class="nav-btn" aria-label="Pagina anterioară">‹</button><span id="nrPagina"></span><button id="nextP" class="nav-btn" aria-label="Pagina următoare">›</button></span>
+          <button id="sterge" class="link-btn">Șterge pagina</button>
+        </div>
+
+        <input id="titlu" class="titlu" placeholder="Titlu" autocomplete="off">
+        <input id="etichete" class="etichete" placeholder="Etichete, separate prin virgulă" autocomplete="off">
+        <div id="bara" class="bara-etichete"></div>
+        <div id="flotant" class="flotant" hidden>
+          <button id="btnEtich" class="btn-prim">Etichetează</button>
+          <div id="formEtich" class="eticheta-form" hidden>
+            <input id="numeEtich" list="liste-etich" placeholder="Numele etichetei" maxlength="30" autocomplete="off">
+            <datalist id="liste-etich"></datalist>
+            <button id="salvEtich" class="btn-prim">Adaugă</button>
+            <button id="anulEtich" class="link-btn">Renunță</button>
+          </div>
+        </div>
+
+        <div class="memento">
+          <span id="rStatus"></span>
+          <div class="rand">
+            <label>Termen
+              <input type="datetime-local" id="rAt">
+            </label>
+            <label>Notifică cu
+              <input type="number" id="rVal" min="0" step="1" value="1">
+              <select id="rUnit">
+                <option value="min">minute</option>
+                <option value="ore">ore</option>
+                <option value="zile">zile</option>
+              </select>
+              înainte
+            </label>
+            <button id="rSterge" class="link-btn">Elimină mementul</button>
+          </div>
+        </div>
+
+        <textarea id="corp" class="corp" placeholder="Scrie liber aici…"></textarea>
+      </article>
+    </section>
+
+    <section id="calendar" hidden>
+      <div class="cal-antet">
+        <h2 id="lunaTitlu"></h2>
+        <button id="prevL" aria-label="Luna anterioară">‹</button>
+        <button id="nextL" aria-label="Luna următoare">›</button>
+        <button id="azi">Azi</button>
+      </div>
+      <div class="zile-sap">
+        <span>Lu</span><span>Ma</span><span>Mi</span><span>Jo</span><span>Vi</span><span>Sâ</span><span>Du</span>
+      </div>
+      <div id="grila" class="grila"></div>
+
+      <div class="zi-lista">
+        <h3 id="ziTitlu"></h3>
+        <ul id="ziItems"></ul>
+      </div>
+
+      <div class="viitoare">
+        <h3>Următoarele remindere</h3>
+        <ul id="viitoare"></ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="panou" class="panou" hidden>
+  <div id="panouFundal" class="panou-fundal"></div>
+  <div class="panou-carte" role="dialog" aria-modal="true" aria-labelledby="panouTitlu">
+    <div class="panou-antet">
+      <h2 id="panouTitlu"></h2>
+      <button id="inchidePanou" class="link-btn">Închide</button>
+    </div>
+    <p id="panouSub" class="panou-sub"></p>
+    <ul id="panouLista" class="panou-lista"></ul>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+(function(){
+  const LS_KEY = 'carnetul-meu-v1';
+  const UNITS = { min: 1, ore: 60, zile: 1440 };
+  const ONE = { min: 'minut', ore: 'oră', zile: 'zi' };
+  const MANY = { min: 'minute', ore: 'ore', zile: 'zile' };
+
+  const fmtFull  = new Intl.DateTimeFormat('ro-RO', { weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const fmtShort = new Intl.DateTimeFormat('ro-RO', { day:'numeric', month:'short', year:'numeric' });
+  const fmtDay   = new Intl.DateTimeFormat('ro-RO', { weekday:'long', day:'numeric', month:'long' });
+  const fmtMonth = new Intl.DateTimeFormat('ro-RO', { month:'long', year:'numeric' });
+  const fmtTime  = new Intl.DateTimeFormat('ro-RO', { hour:'2-digit', minute:'2-digit' });
+
+  const $ = s => document.querySelector(s);
+  let notes = load().map(n => ({ labels: [], ...n }));
+  let pendingSel = null;
+  let currentId = notes.length ? notes[0].id : null;
+  let activeTag = null;
+  let query = '';
+  let calCursor = firstOfMonth(new Date());
+  let selectedDay = startOfDay(new Date());
+  let listTimer = null;
+
+  /* ---------- Utilitare ---------- */
+  function load(){
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function save(){
+    try { localStorage.setItem(LS_KEY, JSON.stringify(notes)); } catch(e){}
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+  function firstOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function keyOf(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+  function current(){ return notes.find(n => n.id === currentId) || null; }
+
+  function displayLead(m){
+    if (m > 0 && m % 1440 === 0) return { v: m/1440, u: 'zile' };
+    if (m > 0 && m % 60 === 0)   return { v: m/60,   u: 'ore' };
+    return { v: m, u: 'min' };
+  }
+  function leadText(m){
+    if (!m) return 'Chiar la termen';
+    const { v, u } = displayLead(m);
+    return `Cu ${v} ${v === 1 ? ONE[u] : MANY[u]} înainte`;
+  }
+
+  /* ---------- Randare ---------- */
+  function renderAll(){
+    renderTags();
+    renderList();
+    fillPage();
+    renderCalendar();
+    renderUpcoming();
+    updateNotifBtn();
+  }
+
+  function renderTags(){
+    const all = [...new Set(notes.flatMap(n => n.tags))].sort((a,b) => a.localeCompare(b, 'ro'));
+    $('#tags').innerHTML = all.map(t =>
+      `<button class="chip ${activeTag === t ? 'on' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`
+    ).join('');
+  }
+
+  function renderList(){
+    const q = query.trim().toLowerCase();
+    const items = notes
+      .filter(n => (!activeTag || n.tags.includes(activeTag)))
+      .filter(n => !q || (n.title + ' ' + n.body + ' ' + n.tags.join(' ')).toLowerCase().includes(q))
+      .sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    $('#lista').innerHTML = items.length ? items.map(n => {
+      const snippet = n.body.replace(/\s+/g, ' ').trim().slice(0, 70);
+      const bell = (n.reminder && !n.reminder.fired) ? '<span class="bell" title="Memento activ">●</span>' : '';
+      const tags = n.tags.length ? ' · ' + esc(n.tags.join(', ')) : '';
+      return `<li tabindex="0" class="${n.id === currentId ? 'activ' : ''}" data-id="${n.id}">
+                <strong>${esc(n.title || 'Fără titlu')}</strong>
+                <span class="snip">${esc(snippet) || '…'}</span>
+                <span class="meta">${fmtShort.format(new Date(n.createdAt))}${tags}</span>
+                ${bell}
+              </li>`;
+    }).join('') : `<li class="gol">${(q || activeTag)
+        ? 'Nicio pagină nu se potrivește.'
+        : 'Nicio pagină încă. Apasă „Pagină nouă”.'}</li>`;
+  }
+
+  function scheduleList(){
+    clearTimeout(listTimer);
+    listTimer = setTimeout(() => { renderList(); renderTags(); }, 250);
+  }
+
+  function fillPage(){
+    const n = current();
+    $('#editor').hidden = !n;
+    $('#gol').hidden = !!n;
+    if (!n) return;
+    $('#titlu').value = n.title;
+    $('#corp').value = n.body;
+    $('#etichete').value = n.tags.join(', ');
+    $('#rAt').value = n.reminder ? n.reminder.at : '';
+    const d = n.reminder ? displayLead(n.reminder.lead) : { v: 1, u: 'ore' };
+    $('#rVal').value = d.v;
+    $('#rUnit').value = d.u;
+    updateStamp();
+    renderReminderStatus();
+    renderLabels();
+    updatePageNav();
+    closeLabelForm();
+  }
+
+  function updateStamp(){
+    const n = current();
+    if (!n) return;
+    let t = 'Creată ' + fmtFull.format(new Date(n.createdAt));
+    if (n.updatedAt !== n.createdAt) t += ' · modificată ' + fmtFull.format(new Date(n.updatedAt));
+    $('#stampa').textContent = t;
+  }
+
+  function renderReminderStatus(){
+    const n = current();
+    const el = $('#rStatus');
+    if (!n) return;
+    if (!n.reminder) { el.textContent = 'Fără memento.'; return; }
+    const when = fmtFull.format(new Date(n.reminder.at));
+    el.textContent = n.reminder.fired
+      ? `Memento trimis · termen ${when}`
+      : `${leadText(n.reminder.lead)} · termen ${when}`;
+  }
+
+  /* ---------- Calendar ---------- */
+  function remindersByDay(){
+    const map = {};
+    notes.forEach(n => {
+      if (!n.reminder || !n.reminder.at) return;
+      const d = new Date(n.reminder.at);
+      const k = keyOf(d);
+      (map[k] = map[k] || []).push({ n, d });
+    });
+    Object.values(map).forEach(list => list.sort((a,b) => a.d - b.d));
+    return map;
+  }
+
+  function renderCalendar(){
+    const y = calCursor.getFullYear(), m = calCursor.getMonth();
+    $('#lunaTitlu').textContent = cap(fmtMonth.format(calCursor));
+    const map = remindersByDay();
+
+    const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+    const start = new Date(y, m, 1 - offset);
+    const todayKey = keyOf(new Date());
+    const selKey = keyOf(selectedDay);
+
+    let html = '';
+    for (let i = 0; i < 42; i++){
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const k = keyOf(d);
+      const items = map[k] || [];
+      const cls = ['cel'];
+      if (d.getMonth() !== m) cls.push('altaluna');
+      if (k === todayKey) cls.push('azi');
+      if (k === selKey) cls.push('sel');
+      html += `<button class="${cls.join(' ')}" data-day="${k}" aria-label="${fmtDay.format(d)}">
+                 <span class="nr">${d.getDate()}</span>
+                 ${items.length ? '<span class="puncte">' + items.slice(0,3).map(() => '<i></i>').join('') + '</span>' : ''}
+               </button>`;
+    }
+    $('#grila').innerHTML = html;
+
+    $('#ziTitlu').textContent = cap(fmtDay.format(selectedDay));
+    const dayItems = map[selKey] || [];
+    $('#ziItems').innerHTML = dayItems.length ? dayItems.map(({n, d}) => `
+        <li data-id="${n.id}"><b>${fmtTime.format(d)}</b>
+          <span>${esc(n.title || 'Fără titlu')}</span>
+          <small>${leadText(n.reminder.lead)}</small>
+        </li>`).join('')
+      : '<li class="gol-text" style="cursor:default">Niciun memento în această zi.</li>';
+  }
+
+  function renderUpcoming(){
+    const now = startOfDay(new Date());
+    const list = notes
+      .filter(n => n.reminder && n.reminder.at && new Date(n.reminder.at) >= now)
+      .sort((a,b) => new Date(a.reminder.at) - new Date(b.reminder.at))
+      .slice(0, 10);
+    $('#viitoare').innerHTML = list.length ? list.map(n => {
+      const d = new Date(n.reminder.at);
+      return `<li data-id="${n.id}"><b>${fmtShort.format(d)}</b>
+                <span>${esc(n.title || 'Fără titlu')}</span>
+                <small>${n.reminder.fired ? 'trimis' : leadText(n.reminder.lead)}</small></li>`;
+    }).join('') : '<li class="gol-text" style="cursor:default">Nu ai remindere programate.</li>';
+  }
+
+  /* ---------- Pagini și etichete pe text ---------- */
+  let flipping = false;
+
+  function pagesOrder(){
+    const q = query.trim().toLowerCase();
+    return notes
+      .filter(n => (!activeTag || n.tags.includes(activeTag)))
+      .filter(n => !q || (n.title + ' ' + n.body + ' ' + n.tags.join(' ')).toLowerCase().includes(q))
+      .sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  function updatePageNav(){
+    const list = pagesOrder();
+    const idx = list.findIndex(n => n.id === currentId);
+    $('#nrPagina').textContent = idx >= 0 ? `Pagina ${idx + 1} din ${list.length}` : '';
+    $('#prevP').disabled = idx <= 0;
+    $('#nextP').disabled = idx < 0 || idx >= list.length - 1;
+  }
+
+  function flip(dir, swap){
+    const ed = $('#editor');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || flipping || ed.hidden){ swap(); return; }
+    flipping = true;
+    ed.classList.remove('turn-next', 'turn-prev');
+    void ed.offsetWidth;
+    ed.classList.add(dir > 0 ? 'turn-next' : 'turn-prev');
+    setTimeout(swap, 280);
+    setTimeout(() => { ed.classList.remove('turn-next', 'turn-prev'); flipping = false; }, 580);
+  }
+
+  function navigatePage(dir){
+    const list = pagesOrder();
+    const idx = list.findIndex(n => n.id === currentId);
+    const target = list[idx + dir];
+    if (idx < 0 || !target) return;
+    flip(dir, () => { currentId = target.id; fillPage(); renderList(); });
+  }
+
+  function hueOf(s){ let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+
+  function renderLabels(){
+    const n = current();
+    const groups = {};
+    (n ? n.labels || [] : []).forEach(l => { (groups[l.name] = groups[l.name] || []).push(l); });
+    $('#bara').innerHTML = Object.keys(groups).map(name => `
+      <span class="eticheta-chip" style="background:hsl(${hueOf(name)} 70% 90%)">
+        <button class="eticheta-nume" data-nume="${esc(name)}" title="Vezi toate textele cu această etichetă">${esc(name)}</button>
+        ${groups[name].length > 1 ? `<small class="nr-texte">${groups[name].length} texte</small>` : ''}
+        <button class="sterg-etich" data-nume="${esc(name)}" aria-label="Șterge eticheta ${esc(name)} din pagină">×</button>
+      </span>`).join('');
+    const names = [...new Set(notes.flatMap(x => (x.labels || []).map(l => l.name)))].sort((a,b) => a.localeCompare(b, 'ro'));
+    $('#liste-etich').innerHTML = names.map(x => `<option value="${esc(x)}">`).join('');
+  }
+
+  function openLabelForm(){
+    if (!current()) return;
+    const ta = $('#corp');
+    const txt = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
+    if (!txt){ toast('Etichetă', 'Selectează mai întâi un text din pagină.'); return; }
+    pendingSel = txt.slice(0, 300);
+    $('#formEtich').hidden = false;
+    $('#btnEtich').hidden = true;
+    $('#numeEtich').value = '';
+    $('#numeEtich').focus();
+  }
+
+  function closeLabelForm(){
+    pendingSel = null;
+    $('#formEtich').hidden = true;
+    $('#btnEtich').hidden = false;
+    $('#flotant').hidden = true;
+  }
+
+  function saveLabel(){
+    const n = current();
+    const name = $('#numeEtich').value.trim();
+    if (!n || !pendingSel) return;
+    if (!name){ $('#numeEtich').focus(); return; }
+    n.labels = n.labels || [];
+    n.labels.push({ id: uid(), name: name.slice(0, 30), text: pendingSel });
+    save();
+    closeLabelForm();
+    renderLabels();
+  }
+
+  function removeLabel(lid){
+    const n = current();
+    if (!n) return;
+    n.labels = (n.labels || []).filter(l => l.id !== lid);
+    save();
+    renderLabels();
+  }
+
+  /* ---------- Acțiuni ---------- */
+  function setView(v){
+    document.querySelectorAll('.tab[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+    $('#pagina').hidden = v !== 'pagini';
+    $('#calendar').hidden = v !== 'calendar';
+    if (v === 'calendar'){ renderCalendar(); renderUpcoming(); }
+  }
+
+  function openNote(id){
+    currentId = id;
+    setView('pagini');
+    fillPage();
+    renderList();
+  }
+
+  function createNote(){
+    const now = new Date().toISOString();
+    const n = { id: uid(), title: '', body: '', tags: [], createdAt: now, updatedAt: now, reminder: null };
+    notes.unshift(n);
+    currentId = n.id;
+    save();
+    setView('pagini');
+    flip(1, () => { renderAll(); $('#titlu').focus(); });
+  }
+
+  function touch(n){
+    n.updatedAt = new Date().toISOString();
+    save();
+    updateStamp();
+    scheduleList();
+  }
+
+  function applyReminder(){
+    const n = current();
+    if (!n) return;
+    const at = $('#rAt').value;
+    if (!at){
+      n.reminder = null;
+    } else {
+      const val = Math.max(0, Math.round(Number($('#rVal').value) || 0));
+      const lead = val * UNITS[$('#rUnit').value];
+      n.reminder = { at, lead, fired: false };
+    }
+    save();
+    renderReminderStatus();
+    renderList();
+    renderCalendar();
+    renderUpcoming();
+  }
+
+  function deleteNote(){
+    const n = current();
+    if (!n) return;
+    if (!confirm(`Ștergi pagina „${n.title || 'Fără titlu'}”? Nu poate fi recuperată.`)) return;
+    notes = notes.filter(x => x.id !== n.id);
+    currentId = notes.length ? notes[0].id : null;
+    save();
+    renderAll();
+  }
+
+  /* ---------- Notificări și mementouri ---------- */
+  function toast(title, body, id){
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<strong>${esc(title)}</strong>${esc(body)}`;
+    el.addEventListener('click', () => { if (id) openNote(id); el.remove(); });
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), 12000);
+  }
+
+  function notify(n){
+    const title = 'Memento: ' + (n.title || 'Fără titlu');
+    const body = `${leadText(n.reminder.lead)} · termen ${fmtFull.format(new Date(n.reminder.at))}`;
+    toast(title, body, n.id);
+    if ('Notification' in window && Notification.permission === 'granted'){
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then(reg => reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'memento-' + n.id }))
+          .catch(() => {});
+      }
+    }
+  }
+
+  function checkReminders(){
+    const now = Date.now();
+    let changed = false;
+    notes.forEach(n => {
+      const r = n.reminder;
+      if (!r || r.fired || !r.at) return;
+      const trigger = new Date(r.at).getTime() - r.lead * 60000;
+      if (trigger <= now){
+        r.fired = true;
+        changed = true;
+        notify(n);
+      }
+    });
+    if (changed){
+      save();
+      renderList();
+      renderCalendar();
+      renderUpcoming();
+      renderReminderStatus();
+    }
+  }
+
+  function updateNotifBtn(){
+    const btn = $('#btnNotif');
+    btn.hidden = !('Notification' in window) || Notification.permission !== 'default';
+  }
+
+  /* ---------- Evenimente ---------- */
+  $('#nou').addEventListener('click', createNote);
+
+  $('#cautare').addEventListener('input', e => { query = e.target.value; renderList(); });
+
+  $('#tags').addEventListener('click', e => {
+    const b = e.target.closest('[data-tag]');
+    if (!b) return;
+    const t = b.dataset.tag;
+    activeTag = activeTag === t ? null : t;
+    renderTags();
+    renderList();
+  });
+
+  $('#lista').addEventListener('click', e => {
+    const li = e.target.closest('li[data-id]');
+    if (li) openNote(li.dataset.id);
+  });
+  $('#lista').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const li = e.target.closest('li[data-id]');
+    if (li) openNote(li.dataset.id);
+  });
+
+  $('#titlu').addEventListener('input', e => {
+    const n = current(); if (!n) return;
+    n.title = e.target.value; touch(n);
+  });
+  $('#corp').addEventListener('input', e => {
+    const n = current(); if (!n) return;
+    n.body = e.target.value; touch(n);
+  });
+  $('#etichete').addEventListener('input', e => {
+    const n = current(); if (!n) return;
+    n.tags = [...new Set(e.target.value.split(',').map(t => t.trim()).filter(Boolean))];
+    touch(n);
+    renderTags();
+  });
+
+  ['#rAt', '#rVal', '#rUnit'].forEach(s => $(s).addEventListener('change', applyReminder));
+  $('#rSterge').addEventListener('click', () => {
+    $('#rAt').value = '';
+    applyReminder();
+    fillPage();
+  });
+
+  $('#sterge').addEventListener('click', deleteNote);
+
+  document.querySelectorAll('.tab[data-view]').forEach(b =>
+    b.addEventListener('click', () => setView(b.dataset.view)));
+
+  $('#grila').addEventListener('click', e => {
+    const b = e.target.closest('[data-day]');
+    if (!b) return;
+    const [y, m, d] = b.dataset.day.split('-').map(Number);
+    selectedDay = new Date(y, m - 1, d);
+    renderCalendar();
+  });
+
+  $('#ziItems').addEventListener('click', e => {
+    const li = e.target.closest('li[data-id]');
+    if (li) openNote(li.dataset.id);
+  });
+  $('#viitoare').addEventListener('click', e => {
+    const li = e.target.closest('li[data-id]');
+    if (li) openNote(li.dataset.id);
+  });
+
+  $('#prevL').addEventListener('click', () => {
+    calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  $('#nextL').addEventListener('click', () => {
+    calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + 1, 1);
+    renderCalendar();
+  });
+  $('#azi').addEventListener('click', () => {
+    selectedDay = startOfDay(new Date());
+    calCursor = firstOfMonth(selectedDay);
+    renderCalendar();
+  });
+
+  $('#btnNotif').addEventListener('click', async () => {
+    if ('Notification' in window){
+      try { await Notification.requestPermission(); } catch(e){}
+    }
+    updateNotifBtn();
+  });
+
+  $('#prevP').addEventListener('click', () => navigatePage(-1));
+  $('#nextP').addEventListener('click', () => navigatePage(1));
+  $('#btnEtich').addEventListener('mousedown', e => e.preventDefault());
+  $('#btnEtich').addEventListener('click', openLabelForm);
+  $('#salvEtich').addEventListener('click', saveLabel);
+  $('#anulEtich').addEventListener('click', closeLabelForm);
+  $('#numeEtich').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); saveLabel(); }
+    if (e.key === 'Escape') closeLabelForm();
+  });
+  function hideFlotant(){ $('#flotant').hidden = true; }
+
+  function caretXY(ta, pos){
+    const cs = getComputedStyle(ta);
+    const m = document.createElement('div');
+    ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing'].forEach(p => m.style[p] = cs[p]);
+    m.style.width = ta.clientWidth + 'px';
+    m.style.boxSizing = 'border-box';
+    m.style.whiteSpace = 'pre-wrap';
+    m.style.overflowWrap = 'break-word';
+    m.style.position = 'absolute';
+    m.style.visibility = 'hidden';
+    m.style.left = '-9999px';
+    m.style.top = '0';
+    m.textContent = ta.value.slice(0, pos);
+    const marker = document.createElement('span');
+    marker.textContent = '\u200b';
+    m.appendChild(marker);
+    document.body.appendChild(m);
+    const result = { top: marker.offsetTop - ta.scrollTop, left: marker.offsetLeft };
+    m.remove();
+    return result;
+  }
+
+  function showFlotant(){
+    const area = $('#corp');
+    const f = $('#flotant');
+    if (!current() || !$('#formEtich').hidden) return;
+    if (area.selectionStart === area.selectionEnd){ f.hidden = true; return; }
+    const p = caretXY(area, area.selectionEnd);
+    const width = $('#editor').clientWidth;
+    f.style.top = (area.offsetTop + p.top + 36) + 'px';
+    f.style.left = Math.max(8, Math.min(area.offsetLeft + p.left, width - 260)) + 'px';
+    f.hidden = false;
+  }
+
+  let panelName = null;
+
+  function labelEntries(name){
+    return notes
+      .flatMap(n => (n.labels || []).filter(l => l.name === name).map(l => ({ n, l })))
+      .sort((a,b) => a.n.createdAt.localeCompare(b.n.createdAt));
+  }
+
+  function renderPanel(){
+    const entries = labelEntries(panelName);
+    const pages = new Set(entries.map(e => e.n.id)).size;
+    $('#panouTitlu').textContent = `Eticheta „${panelName}”`;
+    $('#panouSub').textContent = entries.length
+      ? `${entries.length} ${entries.length === 1 ? 'text' : 'texte'} în ${pages} ${pages === 1 ? 'pagină' : 'pagini'}`
+      : '';
+    $('#panouLista').innerHTML = entries.length ? entries.map(({ n, l }) => `
+      <li data-nid="${n.id}">
+        <span class="txt">„${esc(l.text)}”</span>
+        <span class="sub">${esc(n.title || 'Fără titlu')} · ${fmtShort.format(new Date(n.createdAt))}</span>
+        <button class="sterg-lab link-btn" data-nid="${n.id}" data-lid="${l.id}">Elimină</button>
+      </li>`).join('')
+      : '<li class="gol">Nu mai există texte cu această etichetă.</li>';
+  }
+
+  function openPanel(name){
+    panelName = name;
+    renderPanel();
+    $('#panou').hidden = false;
+  }
+
+  function closePanel(){
+    $('#panou').hidden = true;
+    panelName = null;
+  }
+
+  function removeLabelFrom(nid, lid){
+    const n = notes.find(x => x.id === nid);
+    if (!n) return;
+    n.labels = (n.labels || []).filter(l => l.id !== lid);
+    save();
+    renderPanel();
+    renderLabels();
+  }
+
+  function removeNameHere(name){
+    const n = current();
+    if (!n) return;
+    n.labels = (n.labels || []).filter(l => l.name !== name);
+    save();
+    renderLabels();
+  }
+
+  $('#bara').addEventListener('click', e => {
+    const nume = e.target.closest('.eticheta-nume');
+    if (nume){ openPanel(nume.dataset.nume); return; }
+    const del = e.target.closest('.sterg-etich');
+    if (del) removeNameHere(del.dataset.nume);
+  });
+
+  $('#panouLista').addEventListener('click', e => {
+    const del = e.target.closest('.sterg-lab');
+    if (del){ removeLabelFrom(del.dataset.nid, del.dataset.lid); return; }
+    const li = e.target.closest('li[data-nid]');
+    if (li){ closePanel(); openNote(li.dataset.nid); }
+  });
+
+  $('#inchidePanou').addEventListener('click', closePanel);
+  $('#panouFundal').addEventListener('click', closePanel);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#panou').hidden) closePanel();
+  });
+
+  const areaCorp = $('#corp');
+  ['mouseup', 'keyup', 'select', 'touchend'].forEach(ev => areaCorp.addEventListener(ev, showFlotant));
+  areaCorp.addEventListener('scroll', showFlotant);
+  areaCorp.addEventListener('input', hideFlotant);
+  areaCorp.addEventListener('blur', () => { if ($('#formEtich').hidden) hideFlotant(); });
+
+  $('#inapoi').addEventListener('click', () => { currentId = null; setView('pagini'); fillPage(); renderList(); });
+  $('#btnCal').addEventListener('click', () => setView('calendar'));
+
+  /* ---------- Pornire ---------- */
+  renderAll();
+  checkReminders();
+  setInterval(checkReminders, 15000);
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
