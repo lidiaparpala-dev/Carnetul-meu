@@ -656,6 +656,7 @@ main{
   const $ = s => document.querySelector(s);
   let notes = load().map(n => ({ labels: [], ...n }));
   let pendingSel = null;
+  let lastSel = '';
   let currentId = notes.length ? notes[0].id : null;
   let activeTag = null;
   let query = '';
@@ -897,7 +898,7 @@ main{
   function openLabelForm(){
     if (!current()) return;
     const ta = $('#corp');
-    const txt = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
+    const txt = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim() || lastSel;
     if (!txt){ toast('Etichetă', 'Selectează mai întâi un text din pagină.'); return; }
     pendingSel = txt.slice(0, 300);
     $('#formEtich').hidden = false;
@@ -1171,6 +1172,7 @@ main{
     const f = $('#flotant');
     if (!current() || !$('#formEtich').hidden) return;
     if (area.selectionStart === area.selectionEnd){ f.hidden = true; return; }
+    lastSel = area.value.slice(area.selectionStart, area.selectionEnd).trim();
     const p = caretXY(area, area.selectionEnd);
     const width = $('#editor').clientWidth;
     f.style.top = (area.offsetTop + p.top + 36) + 'px';
@@ -1254,7 +1256,17 @@ main{
   ['mouseup', 'keyup', 'select', 'touchend'].forEach(ev => areaCorp.addEventListener(ev, showFlotant));
   areaCorp.addEventListener('scroll', showFlotant);
   areaCorp.addEventListener('input', hideFlotant);
-  areaCorp.addEventListener('blur', () => { if ($('#formEtich').hidden) hideFlotant(); });
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === areaCorp) showFlotant();
+  });
+  areaCorp.addEventListener('blur', () => {
+    setTimeout(() => {
+      const inside = document.activeElement && $('#flotant').contains(document.activeElement);
+      if (!inside && $('#formEtich').hidden) hideFlotant();
+    }, 150);
+  });
+  ['pointerdown', 'touchstart'].forEach(ev =>
+    $('#btnEtich').addEventListener(ev, e => e.preventDefault(), { passive: false }));
 
   $('#inapoi').addEventListener('click', () => { currentId = null; setView('pagini'); fillPage(); renderList(); });
   $('#btnCal').addEventListener('click', () => setView('calendar'));
