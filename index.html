@@ -667,6 +667,8 @@ main{
   let notes = load().map(n => ({ labels: [], ...n }));
   let pendingSel = null;
   let lastSel = '';
+  const TOMB_KEY = 'carnetul-meu-sterse';
+  let tombs = (() => { try { return JSON.parse(localStorage.getItem(TOMB_KEY) || '[]'); } catch(e){ return []; } })();
   let currentId = notes.length ? notes[0].id : null;
   let activeTag = null;
   let query = '';
@@ -1000,6 +1002,8 @@ main{
     if (!n) return;
     if (!confirm(`Ștergi pagina „${n.title || 'Fără titlu'}”? Nu poate fi recuperată.`)) return;
     notes = notes.filter(x => x.id !== n.id);
+    tombs.push({ id: n.id, at: new Date().toISOString() });
+    try { localStorage.setItem(TOMB_KEY, JSON.stringify(tombs)); } catch(e){}
     currentId = notes.length ? notes[0].id : null;
     save();
     renderAll();
@@ -1284,9 +1288,14 @@ main{
 
   window.carnetApp = {
     getNotes(){ return notes; },
-    replaceNotes(arr){
+    getTombs(){ return tombs; },
+    replaceNotes(arr, tombArr){
       if (!Array.isArray(arr)) return;
       notes = arr;
+      if (Array.isArray(tombArr)) {
+        tombs = tombArr;
+        try { localStorage.setItem(TOMB_KEY, JSON.stringify(tombs)); } catch(e){}
+      }
       try { localStorage.setItem(LS_KEY, JSON.stringify(notes)); } catch(e){}
       if (!notes.find(n => n.id === currentId)) currentId = notes.length ? notes[0].id : null;
       if (document.activeElement && $('#editor').contains(document.activeElement)) {
@@ -1338,15 +1347,33 @@ let formOpen = false;
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const notesRef = uid => doc(db, 'users', uid, 'data', 'notes');
+const byId = (x, y) => x.id.localeCompare(y.id);
 
-function mergeNotes(a, b){
-  const map = new Map();
-  [...a, ...b].forEach(n => {
-    const old = map.get(n.id);
-    if (!old || (n.updatedAt || '') > (old.updatedAt || '')) map.set(n.id, n);
+// Îmbină notițele și ștergerile de pe toate dispozitivele.
+// O notiță ștearsă rămâne ștearsă, decât dacă a fost modificată după ștergere.
+function mergeAll(localNotes, localTombs, remoteNotes, remoteTombs){
+  const tombMap = new Map();
+  [...localTombs, ...remoteTombs].forEach(t => {
+    const old = tombMap.get(t.id);
+    if (!old || t.at > old.at) tombMap.set(t.id, t);
   });
-  return [...map.values()].sort((x, y) => x.id.localeCompare(y.id));
+  const noteMap = new Map();
+  [...localNotes, ...remoteNotes].forEach(n => {
+    const old = noteMap.get(n.id);
+    if (!old || (n.updatedAt || '') > (old.updatedAt || '')) noteMap.set(n.id, n);
+  });
+  const notes = [...noteMap.values()].filter(n => {
+    const t = tombMap.get(n.id);
+    return !t || (n.updatedAt || '') > t.at;
+  });
+  return { notes, tombs: [...tombMap.values()] };
 }
+
+// Forma canonică, ca să comparăm stările fără să intrăm în bucle
+const canon = (notes, tombs) => JSON.stringify({
+  notes: [...notes].sort(byId),
+  tombs: [...tombs].sort(byId)
+});
 
 const msgFor = code => ({
   'auth/invalid-email': 'Adresa de email nu este validă.',
@@ -1412,8 +1439,11 @@ async function pushNow(){
   if (!user) return;
   setStatus('Se sincronizează…');
   try {
+    const notes = window.carnetApp.getNotes();
+    const tombs = window.carnetApp.getTombs();
     await setDoc(notesRef(user.uid), {
-      json: JSON.stringify(window.carnetApp.getNotes()),
+      json: JSON.stringify([...notes].sort(byId)),
+      tombs: JSON.stringify([...tombs].sort(byId)),
       updatedAt: new Date().toISOString()
     });
     setStatus('Sincronizat la ' + new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }));
@@ -1429,24 +1459,31 @@ function schedulePush(){
 }
 window.carnetCloud = { schedulePush };
 
+function readRemote(data){
+  return {
+    notes: JSON.parse(data.json || '[]'),
+    tombs: JSON.parse(data.tombs || '[]')
+  };
+}
+
 async function startSync(u){
   user = u;
   setStatus('Se încarcă notițele…');
   const ref = notesRef(u.uid);
   const snap = await getDoc(ref);
-  const remote = snap.exists() ? JSON.parse(snap.data().json || '[]') : [];
-  window.carnetApp.replaceNotes(mergeNotes(window.carnetApp.getNotes(), remote));
+  const remote = snap.exists() ? readRemote(snap.data()) : { notes: [], tombs: [] };
+  const merged = mergeAll(window.carnetApp.getNotes(), window.carnetApp.getTombs(), remote.notes, remote.tombs);
+  window.carnetApp.replaceNotes(merged.notes, merged.tombs);
   await pushNow();
 
   unsubscribe = onSnapshot(ref, s => {
     if (s.metadata.hasPendingWrites || !s.exists()) return;
-    const remoteNow = JSON.parse(s.data().json || '[]');
-    const mine = window.carnetApp.getNotes();
-    const merged = mergeNotes(mine, remoteNow);
-    const mineStr = JSON.stringify(mine);
-    const mergedStr = JSON.stringify(merged);
-    if (mergedStr !== mineStr) window.carnetApp.replaceNotes(merged);
-    if (mergedStr !== JSON.stringify(remoteNow)) schedulePush();
+    const remoteNow = readRemote(s.data());
+    const mine = canon(window.carnetApp.getNotes(), window.carnetApp.getTombs());
+    const m = mergeAll(window.carnetApp.getNotes(), window.carnetApp.getTombs(), remoteNow.notes, remoteNow.tombs);
+    const mergedStr = canon(m.notes, m.tombs);
+    if (mergedStr !== mine) window.carnetApp.replaceNotes(m.notes, m.tombs);
+    if (mergedStr !== canon(remoteNow.notes, remoteNow.tombs)) schedulePush();
   });
 }
 
