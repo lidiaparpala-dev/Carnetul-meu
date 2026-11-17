@@ -542,6 +542,37 @@ main{
 .mem-lbl input{width:64px;border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px}
 #formMemento select{border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px}
 #formMemento input[type=datetime-local]{border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px;min-width:200px}
+/* ---------- Vizualizarea etichetelor ---------- */
+.etich-cautare{margin-bottom:14px}
+.etich-cautare input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#FFFDF6;font-size:16px;outline:none}
+.etich-cautare input:focus{border-color:var(--ink)}
+.etich-lista{display:flex;flex-direction:column;gap:18px}
+.eticheta-grup{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#FFFDF6}
+.eticheta-grup-antet{padding:10px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.eticheta-grup-antet h3{font-family:var(--font-head);font-weight:600;font-size:18px;margin:0}
+.eticheta-grup-antet small{color:var(--ink-soft)}
+.eticheta-texte{list-style:none;margin:0;padding:0}
+.eticheta-texte li{padding:10px 14px;border-top:1px solid var(--line);cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.eticheta-texte li:hover{background:var(--paper)}
+.eticheta-texte .txt{font-style:italic;line-height:1.5}
+.eticheta-texte .sub{font-size:13px;color:var(--ink-soft)}
+.etich-gol{padding:20px;text-align:center}
+#eticheteView{flex:1;min-height:0;overflow:auto;padding:20px 28px 40px}
+#eticheteView[hidden]{display:none}
+@media (max-width:760px){
+  #eticheteView{padding:14px 14px 40px}
+  .book:has(#eticheteView:not([hidden])) .rail{display:none}
+  .book:has(#eticheteView:not([hidden])) main{display:flex}
+}
+/* ---------- Taskuri validate ---------- */
+.memento-item .fa-facut{width:28px;height:28px;flex:0 0 auto;border-radius:50%;border:1.5px solid var(--ink-soft);background:var(--paper);color:transparent;font-size:15px;line-height:1;padding:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.memento-item .fa-facut:hover{border-color:var(--cover)}
+.memento-item .fa-facut.on{background:var(--cover);border-color:var(--cover);color:var(--paper)}
+.memento-item .mem-text{flex:1 1 0;min-width:0}
+.memento-item.facut{border-left-color:var(--cover)}
+.memento-item.facut .mem-text{text-decoration:line-through;text-decoration-color:var(--ink-soft);color:var(--ink-soft)}
+.fa-facut-txt{color:var(--cover)}
+.fa-facut-txt small{color:var(--ink-soft)}
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F4A3C">
@@ -559,6 +590,7 @@ main{
       <h1>Carnetul meu</h1>
       <button id="nou" class="btn-prim">+ Pagină nouă</button>
       <button id="btnCal" class="btn-prim mobil-doar" type="button">Calendar</button>
+      <button id="btnEtichete" class="btn-prim mobil-doar" type="button">Etichete</button>
     </header>
     <div id="contBara" class="cont-bara"></div>
     <label class="cauta">
@@ -573,6 +605,7 @@ main{
       <button id="inapoi" class="tab mobil-doar" type="button">‹ Pagini</button>
       <button class="tab on" data-view="pagini">Pagini</button>
       <button class="tab" data-view="calendar">Calendar</button>
+      <button class="tab" data-view="etichete">Etichete</button>
       <button id="btnNotif" class="tab mic" hidden>Activează notificările</button>
     </nav>
 
@@ -636,6 +669,12 @@ main{
         <h3>Următoarele remindere</h3>
         <ul id="viitoare"></ul>
       </div>
+    </section>
+    <section id="eticheteView" hidden>
+      <div class="etich-cautare">
+        <input id="cautaEtich" type="search" placeholder="Caută etichetă sau text…" autocomplete="off">
+      </div>
+      <div id="eticheteLista" class="etich-lista"></div>
     </section>
   </main>
 </div>
@@ -834,7 +873,7 @@ main{
     const dayItems = map[selKey] || [];
     $('#ziItems').innerHTML = dayItems.length ? dayItems.map(({n, d, r}) => `
         <li data-id="${n.id}"><b>${fmtTime.format(d)}</b>
-          <span>${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
+          <span class="${r.done ? 'fa-facut-txt' : ''}">${r.done ? '✓ ' : ''}${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
           <small>${r.fired ? 'trimis' : leadText(r.lead)}</small>
         </li>`).join('')
       : '<li class="gol-text" style="cursor:default">Niciun memento în această zi.</li>';
@@ -848,7 +887,7 @@ main{
       .slice(0, 12);
     $('#viitoare').innerHTML = list.length ? list.map(({n, d, r}) => `
       <li data-id="${n.id}"><b>${fmtShort.format(d)}</b>
-        <span>${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
+        <span class="${r.done ? 'fa-facut-txt' : ''}">${r.done ? '✓ ' : ''}${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
         <small>${r.fired ? 'trimis' : leadText(r.lead)}</small></li>`).join('')
       : '<li class="gol-text" style="cursor:default">Nu ai remindere programate.</li>';
   }
@@ -859,11 +898,45 @@ main{
     const list = n ? [...(n.reminders || [])].sort((a,b) => new Date(a.at) - new Date(b.at)) : [];
     box.hidden = !list.length;
     box.innerHTML = list.map(r => `
-      <li class="memento-item${r.fired ? ' trimis' : ''}">
+      <li class="memento-item${r.fired ? ' trimis' : ''}${r.done ? ' facut' : ''}">
+        <button class="fa-facut${r.done ? ' on' : ''}" data-mid="${r.id}" title="${r.done ? 'Făcut — apasă ca să anulezi' : 'Marchează ca făcut'}" aria-label="${r.done ? 'Anulează: făcut' : 'Marchează ca făcut'}">✓</button>
         <span class="mem-text">„${esc(r.text)}”</span>
-        <span class="mem-cand">${fmtFull.format(new Date(r.at))} · ${r.fired ? 'trimis' : leadText(r.lead)}</span>
+        <span class="mem-cand">${fmtFull.format(new Date(r.at))} · ${r.done ? 'făcut' : (r.fired ? 'trimis' : leadText(r.lead))}</span>
         <button class="sterg-memento" data-mid="${r.id}" aria-label="Șterge mementul">×</button>
       </li>`).join('');
+  }
+
+  function renderEtichete(){
+    const q = ($('#cautaEtich').value || '').trim().toLowerCase();
+    const groups = {};
+    notes.forEach(n => (n.labels || []).forEach(l => {
+      (groups[l.name] = groups[l.name] || []).push({ n, l });
+    }));
+    let names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ro'));
+    if (q){
+      names = names.filter(name =>
+        name.toLowerCase().includes(q) ||
+        groups[name].some(({ n, l }) => l.text.toLowerCase().includes(q) || (n.title || '').toLowerCase().includes(q))
+      );
+    }
+    $('#eticheteLista').innerHTML = names.length ? names.map(name => {
+      const items = groups[name].slice().sort((a, b) => a.n.createdAt.localeCompare(b.n.createdAt));
+      const pages = new Set(items.map(i => i.n.id)).size;
+      return `
+        <section class="eticheta-grup">
+          <header class="eticheta-grup-antet" style="background:hsl(${hueOf(name)} 70% 90%)">
+            <h3>${esc(name)}</h3>
+            <small>${items.length} ${items.length === 1 ? 'text' : 'texte'} · ${pages} ${pages === 1 ? 'pagină' : 'pagini'}</small>
+          </header>
+          <ul class="eticheta-texte">
+            ${items.map(({ n, l }) => `
+              <li data-nid="${n.id}">
+                <span class="txt">„${esc(l.text)}”</span>
+                <span class="sub">${esc(n.title || 'Fără titlu')} · ${fmtShort.format(new Date(n.createdAt))}</span>
+              </li>`).join('')}
+          </ul>
+        </section>`;
+    }).join('') : `<p class="gol-text etich-gol">${q ? 'Nicio etichetă nu se potrivește căutării.' : 'Nicio etichetă încă. Selectează un text într-o pagină și apasă „Etichetează”.'}</p>`;
   }
 
   let pendingMemento = null;
@@ -1014,7 +1087,9 @@ main{
     document.querySelectorAll('.tab[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
     $('#pagina').hidden = v !== 'pagini';
     $('#calendar').hidden = v !== 'calendar';
+    $('#eticheteView').hidden = v !== 'etichete';
     if (v === 'calendar'){ renderCalendar(); renderUpcoming(); }
+    if (v === 'etichete') renderEtichete();
   }
 
   function openNote(id){
@@ -1084,7 +1159,7 @@ main{
     let changed = false;
     notes.forEach(n => {
       (n.reminders || []).forEach(r => {
-        if (r.fired || !r.at) return;
+        if (r.fired || r.done || !r.at) return;
         const trigger = new Date(r.at).getTime() - r.lead * 60000;
         if (trigger <= now){
           r.fired = true;
@@ -1328,6 +1403,12 @@ main{
 
   $('#inapoi').addEventListener('click', () => { currentId = null; setView('pagini'); fillPage(); renderList(); });
   $('#btnCal').addEventListener('click', () => setView('calendar'));
+  $('#btnEtichete').addEventListener('click', () => setView('etichete'));
+  $('#cautaEtich').addEventListener('input', renderEtichete);
+  $('#eticheteLista').addEventListener('click', e => {
+    const li = e.target.closest('li[data-nid]');
+    if (li) openNote(li.dataset.nid);
+  });
 
   window.carnetApp = {
     getNotes(){ return notes; },
@@ -1357,6 +1438,21 @@ main{
   $('#anulMemento').addEventListener('click', closeMementoForm);
   $('#mAt').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveMemento(); } });
   $('#mementouri').addEventListener('click', e => {
+    const ok = e.target.closest('.fa-facut');
+    if (ok){
+      const nn = current();
+      const r = nn && (nn.reminders || []).find(x => x.id === ok.dataset.mid);
+      if (r){
+        r.done = !r.done;
+        r.doneAt = r.done ? new Date().toISOString() : null;
+        touch(nn);
+        renderReminders();
+        renderList();
+        renderCalendar();
+        renderUpcoming();
+      }
+      return;
+    }
     const b = e.target.closest('.sterg-memento');
     const n = current();
     if (!b || !n) return;
