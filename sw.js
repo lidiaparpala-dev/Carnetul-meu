@@ -1,4 +1,4 @@
-const CACHE = 'carnetul-v6';
+const CACHE = 'carnetul-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,22 +13,38 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Pagina principală și fișierele aplicației: întâi de pe internet (ca să primești versiunea nouă),
+// iar dacă nu există conexiune, din memoria telefonului.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        const sameOrigin = new URL(e.request.url).origin === self.location.origin;
-        const font = e.request.url.includes('fonts.g');
-        if (resp.ok && (sameOrigin || font)) {
-          const copy = resp.clone();
-          caches.open(CACHE).then(c => c.put(e.request, copy));
-        }
+  const url = new URL(e.request.url);
+  const sameOrigin = url.origin === self.location.origin;
+
+  if (sameOrigin) {
+    e.respondWith(
+      fetch(e.request)
+        .then(resp => {
+          if (resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then(c => c.put(e.request, copy));
+          }
+          return resp;
+        })
+        .catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Fonturi și alte resurse externe: din memorie dacă există, altfel de pe internet
+  if (url.href.includes('fonts.g')) {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
+        const copy = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
         return resp;
-      }).catch(() => caches.match('./index.html'));
-    })
-  );
+      }))
+    );
+  }
 });
 
 self.addEventListener('notificationclick', e => {
