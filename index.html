@@ -1449,6 +1449,7 @@ main{
   window.carnetApp = {
     getNotes(){ return notes; },
     getTombs(){ return tombs; },
+    showCalendar(){ setView('calendar'); },
     replaceNotes(arr, tombArr){
       if (!Array.isArray(arr)) return;
       notes = arr;
@@ -1684,7 +1685,7 @@ onAuthStateChanged(auth, async u => {
   if (unsubscribe){ unsubscribe(); unsubscribe = null; }
   if (u){
     user = u;
-    try { await startSync(u); }
+    try { await startSync(u); window.carnetApp.showCalendar(); }
     catch(e){ setStatus('Eroare la încărcarea notițelor din cont.'); }
   } else {
     user = null;
