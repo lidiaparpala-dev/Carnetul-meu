@@ -529,6 +529,19 @@ main{
 .form-cont input{padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:16px;background:#FFFDF6;color:var(--ink)}
 .form-butoane{display:flex;gap:6px}
 .form-butoane .btn-prim{flex:1}
+/* ---------- Mementouri pe fragmente ---------- */
+.mementouri{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mementouri[hidden]{display:none}
+.memento-item{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:#FFFDF6;border:1px solid var(--line);border-left:4px solid var(--margin);border-radius:4px;padding:6px 10px;font-size:15px}
+.memento-item.trimis{opacity:.6;border-left-color:var(--line)}
+.mem-text{font-style:italic;flex:1 1 100%;line-height:1.4}
+.mem-cand{color:var(--ink-soft);font-size:13px;flex:1}
+.sterg-memento{border:0;background:none;cursor:pointer;color:var(--ink-soft);font-size:18px;line-height:1;padding:0 4px}
+.sterg-memento:hover{color:var(--margin)}
+.mem-lbl{display:inline-flex;align-items:center;gap:6px}
+.mem-lbl input{width:64px;border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px}
+#formMemento select{border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px}
+#formMemento input[type=datetime-local]{border:0;border-bottom:1px solid var(--ink-soft);background:transparent;outline:none;padding:2px 4px;min-width:200px}
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F4A3C">
@@ -580,6 +593,15 @@ main{
         <div id="bara" class="bara-etichete"></div>
         <div id="flotant" class="flotant" hidden>
           <button id="btnEtich" class="btn-prim">Etichetează</button>
+          <button id="btnMemento" class="btn-prim">Memento</button>
+          <div id="formMemento" class="eticheta-form" hidden>
+            <input id="mAt" type="datetime-local" aria-label="Termen">
+            <label class="mem-lbl">Notifică cu <input id="mVal" type="number" min="0" step="1" value="1"></label>
+            <select id="mUnit" aria-label="Unitate"><option value="min">minute</option><option value="ore">ore</option><option value="zile">zile</option></select>
+            <span>înainte</span>
+            <button id="salvMemento" class="btn-prim">Salvează</button>
+            <button id="anulMemento" class="link-btn">Renunță</button>
+          </div>
           <div id="formEtich" class="eticheta-form" hidden>
             <input id="numeEtich" list="liste-etich" placeholder="Numele etichetei" maxlength="30" autocomplete="off">
             <datalist id="liste-etich"></datalist>
@@ -588,25 +610,7 @@ main{
           </div>
         </div>
 
-        <div class="memento">
-          <span id="rStatus"></span>
-          <div class="rand">
-            <label>Termen
-              <input type="datetime-local" id="rAt">
-            </label>
-            <label>Notifică cu
-              <input type="number" id="rVal" min="0" step="1" value="1">
-              <select id="rUnit">
-                <option value="min">minute</option>
-                <option value="ore">ore</option>
-                <option value="zile">zile</option>
-              </select>
-              înainte
-            </label>
-            <button id="rSterge" class="link-btn">Elimină mementul</button>
-          </div>
-        </div>
-
+        <ul id="mementouri" class="mementouri" hidden></ul>
         <textarea id="corp" class="corp" placeholder="Scrie liber aici…"></textarea>
       </article>
     </section>
@@ -664,7 +668,14 @@ main{
   const fmtTime  = new Intl.DateTimeFormat('ro-RO', { hour:'2-digit', minute:'2-digit' });
 
   const $ = s => document.querySelector(s);
-  let notes = load().map(n => ({ labels: [], ...n }));
+  let notes = load().map(n => {
+    const x = { labels: [], reminders: [], ...n };
+    if (n.reminder && !(n.reminders && n.reminders.length)) {
+      x.reminders = [{ id: uid(), text: n.title || 'Memento', at: n.reminder.at, lead: n.reminder.lead, fired: !!n.reminder.fired }];
+    }
+    delete x.reminder;
+    return x;
+  });
   let pendingSel = null;
   let lastSel = '';
   const TOMB_KEY = 'carnetul-meu-sterse';
@@ -734,7 +745,7 @@ main{
 
     $('#lista').innerHTML = items.length ? items.map(n => {
       const snippet = n.body.replace(/\s+/g, ' ').trim().slice(0, 70);
-      const bell = (n.reminder && !n.reminder.fired) ? '<span class="bell" title="Memento activ">●</span>' : '';
+      const bell = (n.reminders || []).some(r => !r.fired) ? '<span class="bell" title="Memento activ">●</span>' : '';
       const tags = n.tags.length ? ' · ' + esc(n.tags.join(', ')) : '';
       return `<li tabindex="0" class="${n.id === currentId ? 'activ' : ''}" data-id="${n.id}">
                 <strong>${esc(n.title || 'Fără titlu')}</strong>
@@ -760,12 +771,8 @@ main{
     $('#titlu').value = n.title;
     $('#corp').value = n.body;
     $('#etichete').value = n.tags.join(', ');
-    $('#rAt').value = n.reminder ? n.reminder.at : '';
-    const d = n.reminder ? displayLead(n.reminder.lead) : { v: 1, u: 'ore' };
-    $('#rVal').value = d.v;
-    $('#rUnit').value = d.u;
+    renderReminders();
     updateStamp();
-    renderReminderStatus();
     renderLabels();
     updatePageNav();
     closeLabelForm();
@@ -779,25 +786,19 @@ main{
     $('#stampa').textContent = t;
   }
 
-  function renderReminderStatus(){
-    const n = current();
-    const el = $('#rStatus');
-    if (!n) return;
-    if (!n.reminder) { el.textContent = 'Fără memento.'; return; }
-    const when = fmtFull.format(new Date(n.reminder.at));
-    el.textContent = n.reminder.fired
-      ? `Memento trimis · termen ${when}`
-      : `${leadText(n.reminder.lead)} · termen ${when}`;
-  }
 
   /* ---------- Calendar ---------- */
+  function allReminders(){
+    const list = [];
+    notes.forEach(n => (n.reminders || []).forEach(r => list.push({ n, r, d: new Date(r.at) })));
+    return list;
+  }
+
   function remindersByDay(){
     const map = {};
-    notes.forEach(n => {
-      if (!n.reminder || !n.reminder.at) return;
-      const d = new Date(n.reminder.at);
-      const k = keyOf(d);
-      (map[k] = map[k] || []).push({ n, d });
+    allReminders().forEach(item => {
+      const k = keyOf(item.d);
+      (map[k] = map[k] || []).push(item);
     });
     Object.values(map).forEach(list => list.sort((a,b) => a.d - b.d));
     return map;
@@ -831,26 +832,85 @@ main{
 
     $('#ziTitlu').textContent = cap(fmtDay.format(selectedDay));
     const dayItems = map[selKey] || [];
-    $('#ziItems').innerHTML = dayItems.length ? dayItems.map(({n, d}) => `
+    $('#ziItems').innerHTML = dayItems.length ? dayItems.map(({n, d, r}) => `
         <li data-id="${n.id}"><b>${fmtTime.format(d)}</b>
-          <span>${esc(n.title || 'Fără titlu')}</span>
-          <small>${leadText(n.reminder.lead)}</small>
+          <span>${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
+          <small>${r.fired ? 'trimis' : leadText(r.lead)}</small>
         </li>`).join('')
       : '<li class="gol-text" style="cursor:default">Niciun memento în această zi.</li>';
   }
 
   function renderUpcoming(){
     const now = startOfDay(new Date());
-    const list = notes
-      .filter(n => n.reminder && n.reminder.at && new Date(n.reminder.at) >= now)
-      .sort((a,b) => new Date(a.reminder.at) - new Date(b.reminder.at))
-      .slice(0, 10);
-    $('#viitoare').innerHTML = list.length ? list.map(n => {
-      const d = new Date(n.reminder.at);
-      return `<li data-id="${n.id}"><b>${fmtShort.format(d)}</b>
-                <span>${esc(n.title || 'Fără titlu')}</span>
-                <small>${n.reminder.fired ? 'trimis' : leadText(n.reminder.lead)}</small></li>`;
-    }).join('') : '<li class="gol-text" style="cursor:default">Nu ai remindere programate.</li>';
+    const list = allReminders()
+      .filter(({d}) => d >= now)
+      .sort((a,b) => a.d - b.d)
+      .slice(0, 12);
+    $('#viitoare').innerHTML = list.length ? list.map(({n, d, r}) => `
+      <li data-id="${n.id}"><b>${fmtShort.format(d)}</b>
+        <span>${esc(r.text)} <small>· ${esc(n.title || 'Fără titlu')}</small></span>
+        <small>${r.fired ? 'trimis' : leadText(r.lead)}</small></li>`).join('')
+      : '<li class="gol-text" style="cursor:default">Nu ai remindere programate.</li>';
+  }
+
+  function renderReminders(){
+    const box = $('#mementouri');
+    const n = current();
+    const list = n ? [...(n.reminders || [])].sort((a,b) => new Date(a.at) - new Date(b.at)) : [];
+    box.hidden = !list.length;
+    box.innerHTML = list.map(r => `
+      <li class="memento-item${r.fired ? ' trimis' : ''}">
+        <span class="mem-text">„${esc(r.text)}”</span>
+        <span class="mem-cand">${fmtFull.format(new Date(r.at))} · ${r.fired ? 'trimis' : leadText(r.lead)}</span>
+        <button class="sterg-memento" data-mid="${r.id}" aria-label="Șterge mementul">×</button>
+      </li>`).join('');
+  }
+
+  let pendingMemento = null;
+
+  function localInput(d){
+    const p = x => String(x).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  function openMementoForm(){
+    if (!current()) return;
+    const ta = $('#corp');
+    const txt = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim() || lastSel;
+    if (!txt){ toast('Memento', 'Selectează mai întâi textul pentru care vrei memento.'); return; }
+    pendingMemento = txt.slice(0, 300);
+    $('#mAt').value = localInput(new Date(Date.now() + 3600000));
+    $('#mVal').value = 1;
+    $('#mUnit').value = 'ore';
+    $('#formMemento').hidden = false;
+    $('#btnEtich').hidden = true;
+    $('#btnMemento').hidden = true;
+    $('#mAt').focus();
+  }
+
+  function closeMementoForm(){
+    pendingMemento = null;
+    $('#formMemento').hidden = true;
+    $('#btnEtich').hidden = false;
+    $('#btnMemento').hidden = false;
+    $('#flotant').hidden = true;
+  }
+
+  function saveMemento(){
+    const n = current();
+    if (!n || !pendingMemento) return;
+    const at = $('#mAt').value;
+    if (!at){ $('#mAt').focus(); return; }
+    const val = Math.max(0, Math.round(Number($('#mVal').value) || 0));
+    const lead = val * UNITS[$('#mUnit').value];
+    n.reminders = n.reminders || [];
+    n.reminders.push({ id: uid(), text: pendingMemento, at, lead, fired: false });
+    closeMementoForm();
+    touch(n);
+    renderReminders();
+    renderList();
+    renderCalendar();
+    renderUpcoming();
   }
 
   /* ---------- Pagini și etichete pe text ---------- */
@@ -916,6 +976,7 @@ main{
     pendingSel = txt.slice(0, 300);
     $('#formEtich').hidden = false;
     $('#btnEtich').hidden = true;
+    $('#btnMemento').hidden = true;
     $('#numeEtich').value = '';
     $('#numeEtich').focus();
   }
@@ -924,6 +985,7 @@ main{
     pendingSel = null;
     $('#formEtich').hidden = true;
     $('#btnEtich').hidden = false;
+    $('#btnMemento').hidden = false;
     $('#flotant').hidden = true;
   }
 
@@ -964,7 +1026,7 @@ main{
 
   function createNote(){
     const now = new Date().toISOString();
-    const n = { id: uid(), title: '', body: '', tags: [], createdAt: now, updatedAt: now, reminder: null };
+    const n = { id: uid(), title: '', body: '', tags: [], createdAt: now, updatedAt: now, reminders: [] };
     notes.unshift(n);
     currentId = n.id;
     save();
@@ -979,23 +1041,6 @@ main{
     scheduleList();
   }
 
-  function applyReminder(){
-    const n = current();
-    if (!n) return;
-    const at = $('#rAt').value;
-    if (!at){
-      n.reminder = null;
-    } else {
-      const val = Math.max(0, Math.round(Number($('#rVal').value) || 0));
-      const lead = val * UNITS[$('#rUnit').value];
-      n.reminder = { at, lead, fired: false };
-    }
-    save();
-    renderReminderStatus();
-    renderList();
-    renderCalendar();
-    renderUpcoming();
-  }
 
   function deleteNote(){
     const n = current();
@@ -1019,15 +1064,17 @@ main{
     setTimeout(() => el.remove(), 12000);
   }
 
-  function notify(n){
-    const title = 'Memento: ' + (n.title || 'Fără titlu');
-    const body = `${leadText(n.reminder.lead)} · termen ${fmtFull.format(new Date(n.reminder.at))}`;
+  function notify(n, r){
+    const title = 'Memento: ' + r.text;
+    const body = `${n.title || 'Fără titlu'} · ${leadText(r.lead)} · termen ${fmtFull.format(new Date(r.at))}`;
     toast(title, body, n.id);
     if ('Notification' in window && Notification.permission === 'granted'){
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.ready
-          .then(reg => reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'memento-' + n.id }))
+          .then(reg => reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'memento-' + r.id }))
           .catch(() => {});
+      } else {
+        try { new Notification(title, { body }); } catch(e){}
       }
     }
   }
@@ -1036,21 +1083,23 @@ main{
     const now = Date.now();
     let changed = false;
     notes.forEach(n => {
-      const r = n.reminder;
-      if (!r || r.fired || !r.at) return;
-      const trigger = new Date(r.at).getTime() - r.lead * 60000;
-      if (trigger <= now){
-        r.fired = true;
-        changed = true;
-        notify(n);
-      }
+      (n.reminders || []).forEach(r => {
+        if (r.fired || !r.at) return;
+        const trigger = new Date(r.at).getTime() - r.lead * 60000;
+        if (trigger <= now){
+          r.fired = true;
+          n.updatedAt = new Date().toISOString();
+          changed = true;
+          notify(n, r);
+        }
+      });
     });
     if (changed){
       save();
       renderList();
       renderCalendar();
       renderUpcoming();
-      renderReminderStatus();
+      renderReminders();
     }
   }
 
@@ -1098,12 +1147,6 @@ main{
     renderTags();
   });
 
-  ['#rAt', '#rVal', '#rUnit'].forEach(s => $(s).addEventListener('change', applyReminder));
-  $('#rSterge').addEventListener('click', () => {
-    $('#rAt').value = '';
-    applyReminder();
-    fillPage();
-  });
 
   $('#sterge').addEventListener('click', deleteNote);
 
@@ -1185,7 +1228,7 @@ main{
   function showFlotant(){
     const area = $('#corp');
     const f = $('#flotant');
-    if (!current() || !$('#formEtich').hidden) return;
+    if (!current() || !$('#formEtich').hidden || !$('#formMemento').hidden) return;
     if (area.selectionStart === area.selectionEnd){ f.hidden = true; return; }
     lastSel = area.value.slice(area.selectionStart, area.selectionEnd).trim();
     const p = caretXY(area, area.selectionEnd);
@@ -1277,7 +1320,7 @@ main{
   areaCorp.addEventListener('blur', () => {
     setTimeout(() => {
       const inside = document.activeElement && $('#flotant').contains(document.activeElement);
-      if (!inside && $('#formEtich').hidden) hideFlotant();
+      if (!inside && $('#formEtich').hidden && $('#formMemento').hidden) hideFlotant();
     }, 150);
   });
   ['pointerdown', 'touchstart'].forEach(ev =>
@@ -1306,6 +1349,24 @@ main{
       }
     }
   };
+
+  ['pointerdown', 'touchstart'].forEach(ev =>
+    $('#btnMemento').addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  $('#btnMemento').addEventListener('click', openMementoForm);
+  $('#salvMemento').addEventListener('click', saveMemento);
+  $('#anulMemento').addEventListener('click', closeMementoForm);
+  $('#mAt').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveMemento(); } });
+  $('#mementouri').addEventListener('click', e => {
+    const b = e.target.closest('.sterg-memento');
+    const n = current();
+    if (!b || !n) return;
+    n.reminders = (n.reminders || []).filter(r => r.id !== b.dataset.mid);
+    touch(n);
+    renderReminders();
+    renderList();
+    renderCalendar();
+    renderUpcoming();
+  });
 
   /* ---------- Pornire ---------- */
   renderAll();
