@@ -1,6 +1,6 @@
 {
-  "name": "Carnetul meu",
-  "short_name": "Carnet",
+  "name": "Write to me",
+  "short_name": "Write to me",
   "description": "Carnet de notițe cu etichete, căutare și remindere",
   "start_url": "./index.html",
   "scope": "./",
