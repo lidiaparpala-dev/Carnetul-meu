@@ -616,6 +616,14 @@ main{
 /* titlurile din listă: text închis pe fundal crem, nu moștenit din copertă */
 .lista li{color:var(--ink)}
 .lista strong{color:var(--ink)}
+/* ---------- Memento din calendar ---------- */
+.cal-memento{margin-top:22px;background:#FFFDF6;border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.cal-memento h3{font-family:var(--font-head);font-weight:600;font-size:18px;margin:0}
+.cal-memento input,.cal-memento select{padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:16px;background:var(--paper);color:var(--ink);width:100%}
+.cal-memento .cm-rand{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cal-memento .cm-rand input{width:72px}
+.cal-memento .cm-rand select{width:auto}
+.cal-memento .btn-prim{align-self:flex-start}
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2F4A3C">
@@ -709,6 +717,18 @@ main{
         <ul id="ziItems"></ul>
       </div>
 
+      <div class="cal-memento">
+        <h3>Memento nou</h3>
+        <input id="cmText" type="text" placeholder="Ce trebuie făcut" autocomplete="off">
+        <input id="cmAt" type="datetime-local" aria-label="Termen">
+        <div class="cm-rand">
+          <label class="mem-lbl">Notifică cu <input id="cmVal" type="number" min="0" step="1" value="1"></label>
+          <select id="cmUnit" aria-label="Unitate"><option value="min">minute</option><option value="ore" selected>ore</option><option value="zile">zile</option></select>
+          <span>înainte</span>
+        </div>
+        <select id="cmPagina" aria-label="Pagina"></select>
+        <button id="cmSalveaza" class="btn-prim">Adaugă memento</button>
+      </div>
       <div class="viitoare">
         <h3>Următoarele remindere</h3>
         <ul id="viitoare"></ul>
@@ -1134,7 +1154,7 @@ main{
     $('#pagina').hidden = v !== 'pagini';
     $('#calendar').hidden = v !== 'calendar';
     $('#eticheteView').hidden = v !== 'etichete';
-    if (v === 'calendar'){ renderCalendar(); renderUpcoming(); }
+    if (v === 'calendar'){ renderCalendar(); renderUpcoming(); renderCalMemento(); }
     if (v === 'etichete') renderEtichete();
   }
 
@@ -1444,7 +1464,7 @@ main{
       if (!inside && $('#formEtich').hidden && $('#formMemento').hidden) hideFlotant();
     }, 150);
   });
-  ['pointerdown', 'touchstart'].forEach(ev =>
+  ['pointerdown'].forEach(ev =>
     $('#btnEtich').addEventListener(ev, e => e.preventDefault(), { passive: false }));
 
   $('#inapoi').addEventListener('click', () => { currentId = null; setView('pagini'); fillPage(); renderList(); });
@@ -1476,7 +1496,7 @@ main{
     }
   };
 
-  ['pointerdown', 'touchstart'].forEach(ev =>
+  ['pointerdown'].forEach(ev =>
     $('#btnMemento').addEventListener(ev, e => e.preventDefault(), { passive: false }));
   $('#btnMemento').addEventListener('click', openMementoForm);
   $('#salvMemento').addEventListener('click', saveMemento);
@@ -1538,9 +1558,53 @@ main{
     copyFallback(text);
   }
 
-  ['pointerdown', 'touchstart'].forEach(ev =>
+  ['pointerdown'].forEach(ev =>
     $('#btnAI').addEventListener(ev, e => e.preventDefault(), { passive: false }));
   $('#btnAI').addEventListener('click', sendToAI);
+
+  function renderCalMemento(){
+    const sel = $('#cmPagina');
+    const prev = sel.value;
+    const sorted = notes.slice().sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ro'));
+    sel.innerHTML = '<option value="__nou__">Pagină nouă</option>' +
+      sorted.map(n => `<option value="${n.id}">${esc(n.title || 'Fără titlu')}</option>`).join('');
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+    if (!$('#cmAt').value) $('#cmAt').value = localInput(new Date(Date.now() + 3600000));
+  }
+
+  function saveCalMemento(){
+    const text = $('#cmText').value.trim();
+    const at = $('#cmAt').value;
+    if (!text){ toast('Memento', 'Scrie ce trebuie făcut.'); $('#cmText').focus(); return; }
+    if (!at){ toast('Memento', 'Alege termenul.'); $('#cmAt').focus(); return; }
+
+    let n;
+    const target = $('#cmPagina').value;
+    if (target === '__nou__'){
+      const now = new Date().toISOString();
+      n = { id: uid(), title: text, body: '', tags: [], labels: [], reminders: [], createdAt: now, updatedAt: now };
+      notes.unshift(n);
+    } else {
+      n = notes.find(x => x.id === target);
+    }
+    if (!n) return;
+
+    const val = Math.max(0, Math.round(Number($('#cmVal').value) || 0));
+    n.reminders = n.reminders || [];
+    n.reminders.push({ id: uid(), text, at, lead: val * UNITS[$('#cmUnit').value], fired: false });
+    touch(n);
+
+    $('#cmText').value = '';
+    renderTags();
+    renderList();
+    renderCalendar();
+    renderUpcoming();
+    renderCalMemento();
+    toast('Memento adăugat', `${text} · ${fmtFull.format(new Date(at))}`);
+  }
+
+  $('#cmSalveaza').addEventListener('click', saveCalMemento);
+  $('#cmText').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveCalMemento(); } });
 
   /* ---------- Pornire ---------- */
   renderAll();
