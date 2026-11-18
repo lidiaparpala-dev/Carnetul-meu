@@ -499,13 +499,15 @@ main{
   /* Butonul de etichetare apare fix jos, deasupra tastaturii */
   .flotant{
     position:fixed !important;
-    top:auto !important;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+    top:calc(env(safe-area-inset-top,0px) + 54px) !important;
+    bottom:auto !important;
     left:10px !important;
-    right:10px;
+    right:52px;
     max-width:none;
     justify-content:center;
     padding:8px;
+    z-index:20;
+    box-shadow:0 10px 24px -8px rgba(38,48,74,.45);
   }
   .flotant .eticheta-form{width:100%}
   .flotant .eticheta-form input{flex:1 1 140px;min-width:0;font-size:16px}
@@ -665,6 +667,7 @@ main{
         <div id="flotant" class="flotant" hidden>
           <button id="btnEtich" class="btn-prim">Etichetează</button>
           <button id="btnMemento" class="btn-prim">Memento</button>
+          <button id="btnAI" class="btn-prim">Trimite la AI</button>
           <div id="formMemento" class="eticheta-form" hidden>
             <input id="mAt" type="datetime-local" aria-label="Termen">
             <label class="mem-lbl">Notifică cu <input id="mVal" type="number" min="0" step="1" value="1"></label>
@@ -826,8 +829,6 @@ main{
       const tags = n.tags.length ? ' · ' + esc(n.tags.join(', ')) : '';
       return `<li tabindex="0" class="${n.id === currentId ? 'activ' : ''}" data-id="${n.id}">
                 <strong>${esc(n.title || 'Fără titlu')}</strong>
-                <span class="snip">${esc(snippet) || '…'}</span>
-                <span class="meta">${fmtShort.format(new Date(n.createdAt))}${tags}</span>
                 ${bell}
               </li>`;
     }).join('') : `<li class="gol">${(q || activeTag)
@@ -996,6 +997,7 @@ main{
     $('#formMemento').hidden = false;
     $('#btnEtich').hidden = true;
     $('#btnMemento').hidden = true;
+    $('#btnAI').hidden = true;
     $('#mAt').focus();
   }
 
@@ -1004,6 +1006,7 @@ main{
     $('#formMemento').hidden = true;
     $('#btnEtich').hidden = false;
     $('#btnMemento').hidden = false;
+    $('#btnAI').hidden = false;
     $('#flotant').hidden = true;
   }
 
@@ -1088,6 +1091,7 @@ main{
     $('#formEtich').hidden = false;
     $('#btnEtich').hidden = true;
     $('#btnMemento').hidden = true;
+    $('#btnAI').hidden = true;
     $('#numeEtich').value = '';
     $('#numeEtich').focus();
   }
@@ -1097,6 +1101,7 @@ main{
     $('#formEtich').hidden = true;
     $('#btnEtich').hidden = false;
     $('#btnMemento').hidden = false;
+    $('#btnAI').hidden = false;
     $('#flotant').hidden = true;
   }
 
@@ -1500,6 +1505,39 @@ main{
     renderCalendar();
     renderUpcoming();
   });
+
+  async function copyFallback(text){
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Copiat', 'Textul este în clipboard. Lipește-l în conversația Claude.');
+    } catch(e){
+      toast('Trimite la AI', 'Nu s-a putut copia automat. Selectează textul și copiază-l manual.');
+    }
+  }
+
+  async function sendToAI(){
+    const n = current();
+    const ta = $('#corp');
+    const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim() || lastSel;
+    if (!n || !sel){
+      toast('Trimite la AI', 'Selectează mai întâi textul pe care vrei să-l trimiți.');
+      return;
+    }
+    const text = `Din pagina „${n.title || 'Fără titlu'}”:\n\n${sel}`;
+    if (navigator.share){
+      try {
+        await navigator.share({ title: n.title || 'Write to me', text });
+      } catch(e){
+        if (e.name !== 'AbortError') copyFallback(text);
+      }
+      return;
+    }
+    copyFallback(text);
+  }
+
+  ['pointerdown', 'touchstart'].forEach(ev =>
+    $('#btnAI').addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  $('#btnAI').addEventListener('click', sendToAI);
 
   /* ---------- Pornire ---------- */
   renderAll();
